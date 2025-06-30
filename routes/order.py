@@ -208,7 +208,7 @@ def request_confirm_payment(order_id):
         if order.status != "pending":
             return jsonify({"message": f"Đơn hàng hiện tại không thể xác nhận, trạng thái: {order.status}"}), 400
 
-        order.status = "waiting_admin_approve"
+        order.status = "pending"
         db.session.commit()
 
         return jsonify({
@@ -231,7 +231,7 @@ def admin_confirm_payment(order_id):
         if not order:
             return jsonify({"message": "Không tìm thấy đơn hàng!"}), 404
 
-        if order.status != "waiting_admin_approve":
+        if order.status != "pending":
             return jsonify({"message": "Đơn hàng chưa được xác nhận từ phía người dùng!"}), 400
 
         plan = PricingPlan.query.get(order.plan_id)
