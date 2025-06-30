@@ -5,6 +5,7 @@ from utils.ai_writer_helper import generate_article
 from middleware.auth_middleware import token_required
 from database.db import db
 import os
+import openai
 ai_writer_bp = Blueprint('ai_writer', __name__)
 
 @ai_writer_bp.route('/generate', methods=['POST'])
