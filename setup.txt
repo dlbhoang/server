@@ -1,0 +1,6 @@
+flask
+flask_sqlalchemy
+flask_cors
+PyJWT
+openai
+python-dotenv
