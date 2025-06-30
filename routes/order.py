@@ -195,3 +195,71 @@ def confirm_payment(order_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({"message": "Lỗi xác nhận thanh toán", "error": str(e)}), 500
+@order_bp.route('/confirm-payment-request/<int:order_id>', methods=['POST'])
+@token_required
+def request_confirm_payment(order_id):
+    try:
+        print(f"[DEBUG] Người dùng xác nhận đã thanh toán - order_id: {order_id}")
+        order = Order.query.get(order_id)
+
+        if not order:
+            return jsonify({"message": "Không tìm thấy đơn hàng!"}), 404
+
+        if order.status != "pending":
+            return jsonify({"message": f"Đơn hàng hiện tại không thể xác nhận, trạng thái: {order.status}"}), 400
+
+        order.status = "waiting_admin_approve"
+        db.session.commit()
+
+        return jsonify({
+            "message": "Đã gửi yêu cầu xác nhận thanh toán. Vui lòng chờ admin duyệt!",
+            "order_id": order.id,
+            "status": order.status
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"message": "Lỗi gửi yêu cầu xác nhận thanh toán", "error": str(e)}), 500
+@order_bp.route('/admin-confirm-payment/<int:order_id>', methods=['POST'])
+@token_required
+@admin_required
+def admin_confirm_payment(order_id):
+    try:
+        print(f"[DEBUG] Admin duyệt đơn hàng - order_id: {order_id}")
+        order = Order.query.get(order_id)
+
+        if not order:
+            return jsonify({"message": "Không tìm thấy đơn hàng!"}), 404
+
+        if order.status != "waiting_admin_approve":
+            return jsonify({"message": "Đơn hàng chưa được xác nhận từ phía người dùng!"}), 400
+
+        plan = PricingPlan.query.get(order.plan_id)
+        user = User.query.get(order.user_id)
+
+        if not plan or not user:
+            return jsonify({"message": "Không thể xác định gói hoặc người dùng!"}), 400
+
+        try:
+            credits_to_add = int(plan.credits.replace(",", "").strip())
+        except Exception as e:
+            print(f"[WARNING] Lỗi phân tích credits: {e}")
+            credits_to_add = 0
+
+        user.credits += credits_to_add
+        order.status = "paid"
+
+        db.session.commit()
+
+        return jsonify({
+            "message": "Admin đã duyệt thanh toán thành công!",
+            "user_id": user.id,
+            "credits_đã_cộng": credits_to_add,
+            "tổng_credits": user.credits,
+            "order_id": order.id
+        }), 200
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"message": "Lỗi admin duyệt thanh toán", "error": str(e)}), 500
+
