@@ -16,9 +16,9 @@ app = Flask(__name__)
 CORS(app)
 
 # 🔧 Cấu hình cơ sở dữ liệu
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'  # Bạn có thể đổi sang PostgreSQL/MySQL khi cần
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SECRET_KEY'] = os.getenv("SECRET_KEY", "your_secret_key")  # JWT secret
+app.config['SECRET_KEY'] = os.getenv("SECRET_KEY", "your_secret_key")
 
 # 🔧 Khởi tạo DB
 db.init_app(app)
@@ -34,6 +34,7 @@ app.register_blueprint(ai_writer_bp, url_prefix='/api/ai-writer')
 with app.app_context():
     db.create_all()
 
-# ✅ Chạy app
+# ✅ Chạy app (FIX: sử dụng host 0.0.0.0 và PORT từ môi trường)
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000))  # Render sẽ gán PORT vào biến môi trường
+    app.run(host='0.0.0.0', port=port)
