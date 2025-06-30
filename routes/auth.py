@@ -110,3 +110,18 @@ def change_password():
     user.password = hash_password(new_pass)
     db.session.commit()
     return jsonify({'message': 'Đổi mật khẩu thành công!'}), 200
+
+
+# Get current user info
+@auth_bp.route('/profile', methods=['GET'])
+@token_required
+def get_profile():
+    user_id = request.user['user_id']
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'message': 'Không tìm thấy người dùng!'}), 404
+
+    return jsonify({
+        'message': 'Lấy thông tin người dùng thành công!',
+        'user': user.to_dict()
+    }), 200
