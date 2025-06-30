@@ -45,6 +45,57 @@ def generate_ai_article():
         db.session.rollback()
         return jsonify({"message": "Lỗi khi viết bài", "error": str(e)}), 500
 
+# Route mới để sinh tiêu đề bài viết
+@ai_writer_bp.route('/generate-titles', methods=['POST'])
+@token_required
+def generate_titles():
+    try:
+        data = request.get_json()
+        keyword = data.get("keyword", "").strip()
+        model_key = data.get("ai_model", "chatgpt").lower()
+
+        if not keyword:
+            return jsonify({"error": "Từ khoá không được để trống!"}), 400
+
+        # Mapping model
+        model_map = {
+            "chatgpt": "gpt-4o",
+            "gemini": "gpt-4o"  # vì bạn chưa dùng Gemini thật
+        }
+        model = model_map.get(model_key, "gpt-4o")
+
+        openai.api_key = os.getenv("OPENAI_API_KEY", "sk-xxxx")
+
+        response = openai.ChatCompletion.create(
+            model=model,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "Bạn là chuyên gia content SEO, hãy viết tiêu đề thật hấp dẫn."
+                },
+                {
+                    "role": "user",
+                    "content": f"Hãy tạo 9 tiêu đề hấp dẫn, chuẩn SEO, khác nhau cho từ khoá: {keyword}."
+                }
+            ],
+            temperature=0.7,
+            max_tokens=512,
+        )
+
+        result_text = response['choices'][0]['message']['content']
+        titles = [line.strip("•-1234567890. ").strip() for line in result_text.split("\n") if line.strip()]
+        titles = [t for t in titles if len(t) > 5][:9]
+
+        return jsonify({
+            "titles": titles,
+            "model_used": model,
+            "message": "Thành công!"
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @ai_writer_bp.route('/history', methods=['GET'])
 @token_required
 def get_ai_article_history():
