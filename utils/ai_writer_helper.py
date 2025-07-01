@@ -20,14 +20,15 @@ def generate_title(main_keyword, sub_keywords):
     return call_openai(prompt)
 
 def generate_outline(main_keyword):
-    prompt = f"Hãy tạo một dàn ý chi tiết cho bài viết với từ khoá chính: '{main_keyword}'. Dàn ý gồm các mục lớn (H2) và mục nhỏ (H3) nếu cần."
+    prompt = f"Hãy tạo một dàn ý chi tiết cho bài viết với từ khoá chính: '{main_keyword}'. Dàn ý gồm các mục lớn và nhỏ nếu cần, không cần đánh số."
     return call_openai(prompt)
 
 def generate_article(data: dict, user):
-    REQUIRED_CREDITS = 5000
+    word_count = int(data.get("word_count", 1000))  # Mặc định 1000 từ
+    REQUIRED_CREDITS = word_count
 
     if user.credits < REQUIRED_CREDITS:
-        raise Exception("Không đủ credits để tạo bài viết!")
+        raise Exception(f"Không đủ credits! Bạn cần ít nhất {REQUIRED_CREDITS} credits để viết {word_count} từ.")
 
     main_kw = data.get("main_keyword")
     sub_kws = data.get("sub_keywords", [])
@@ -38,6 +39,7 @@ def generate_article(data: dict, user):
     source_mode = data.get("source_mode", "own")
     semantic_option = data.get("semantic_option", "skip")
     semantic_kws = data.get("semantic_keywords", []) if semantic_option == "semantic" else []
+
     model = data.get("stepSeven", {}).get("aiModel", "gpt-4")
     bold_kw = data.get("stepSeven", {}).get("boldMainKeyword", False)
     bold_headings = data.get("stepSeven", {}).get("boldHeadings", False)
@@ -46,26 +48,23 @@ def generate_article(data: dict, user):
     insert_position = data.get("stepSeven", {}).get("position", None)
     selected_site = data.get("stepSeven", {}).get("selectedWebsite", "")
 
-    # B1: Tiêu đề
     if title_mode == "auto":
         title = generate_title(main_kw, sub_kws).split("\n")[0]
     else:
         title = custom_title or f"Bài viết về {main_kw}"
 
-    # B2: Dàn ý
     if outline_mode == "auto":
         outline = generate_outline(main_kw)
     else:
         outline = "\n".join(custom_outline or ["Mở bài", "Thân bài", "Kết luận"])
 
-    # B3: Chuẩn bị các phần phụ để tránh lỗi f-string
     semantic_text = ", ".join(semantic_kws) if semantic_kws else "Không có"
     link_text = f"Chèn liên kết cho từ khoá như sau:\n{keyword_links}" if keyword_links else "Không cần chèn liên kết"
     final_paragraph_text = f"Chèn đoạn kết sau cùng:\n{final_paragraph}" if final_paragraph else "Không cần thêm đoạn kết"
 
-    # Prompt
+    # ✅ Prompt viết bài theo định dạng markdown, không có số đầu dòng hay thẻ HTML
     prompt = f"""
-Viết một bài viết chuẩn SEO, hấp dẫn, dài ít nhất 1000 từ, với yêu cầu sau:
+Hãy viết một bài viết chuẩn SEO, hấp dẫn, dài khoảng {word_count} từ, với yêu cầu sau:
 
 - Từ khoá chính: {main_kw}
 - Từ khoá phụ: {', '.join(sub_kws)}
@@ -75,19 +74,20 @@ Viết một bài viết chuẩn SEO, hấp dẫn, dài ít nhất 1000 từ, v�
 {outline}
 
 Yêu cầu định dạng:
-- {"In đậm" if bold_kw else "Không in đậm"} từ khoá chính
-- {"In đậm" if bold_headings else "Không in đậm"} tiêu đề (H2, H3)
+- KHÔNG dùng các thẻ HTML như <h1>, <h2>, <h3>, <p>, ...
+- KHÔNG bắt đầu bằng số thứ tự như 1., 2., I., II.
+- Tiêu đề và tiêu đề phụ in đậm bằng Markdown (**...**)
+- Trình bày gọn gàng, không để khoảng trắng dư thừa giữa các đoạn
+- { "In đậm từ khoá chính trong nội dung" if bold_kw else "Không cần in đậm từ khoá chính" }
+- { "Tiêu đề phải in đậm" if bold_headings else "Không cần in đậm tiêu đề" }
 - {link_text}
 - {final_paragraph_text}
-- Nếu có thể, đề cập trang web: {selected_site} (nếu phù hợp nội dung)
+- Nếu phù hợp, đề cập website: {selected_site}
 
-Ngôn ngữ: {data.get("language", "Vietnamese")}
+Viết bằng ngôn ngữ: {data.get("language", "Vietnamese")}
 """.strip()
 
-    # B4: Gọi OpenAI để tạo bài viết
     content = call_openai(prompt, model=model)
-
-    # Trừ credits
     user.credits -= REQUIRED_CREDITS
 
     return {
