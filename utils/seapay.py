@@ -1,7 +1,7 @@
 import urllib.parse
 
-SEAPAY_ACCOUNT = "123456789"     # Số tài khoản nhận tiền
-SEAPAY_BANK_CODE = "vcb"         # Mã ngân hàng
+SEAPAY_ACCOUNT = "88865298888"     # Số tài khoản nhận tiền
+SEAPAY_BANK_CODE = "tp"         # Mã ngân hàng
 
 def generate_vietqr_url(plan):
     try:
