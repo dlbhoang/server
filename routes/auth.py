@@ -6,7 +6,7 @@ from models.user import User
 from database.db import db
 from extensions.security import hash_password, verify_password
 from utils.jwt_utils import generate_token, decode_token
-from middleware.auth_middleware import token_required
+from middleware.auth_middleware import admin_required, token_required
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -125,3 +125,23 @@ def get_profile():
         'message': 'Lấy thông tin người dùng thành công!',
         'user': user.to_dict()
     }), 200
+
+@auth_bp.route('/users', methods=['GET'])
+@token_required
+@admin_required
+def get_all_users():
+    users = User.query.all()
+    return jsonify([user.to_dict() for user in users]), 200
+
+# Xoá người dùng theo ID (chỉ admin)
+@auth_bp.route('/users/<int:user_id>', methods=['DELETE'])
+@token_required
+@admin_required
+def delete_user(user_id):
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'message': 'Người dùng không tồn tại!'}), 404
+
+    db.session.delete(user)
+    db.session.commit()
+    return jsonify({'message': f'Đã xoá người dùng ID {user_id} thành công!'}), 200
