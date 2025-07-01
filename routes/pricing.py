@@ -122,3 +122,31 @@ def delete_plan(plan_id):
             "error": str(e),
             "status": 500
         }), 500
+@pricing_bp.route('/plans/stats', methods=['GET'])
+@token_required
+@admin_required
+def plan_stats():
+    try:
+        total_plans = PricingPlan.query.count()
+
+        total_credits = db.session.query(
+            db.func.sum(db.func.cast(PricingPlan.credits, db.Integer))
+        ).scalar() or 0
+
+        total_price_vnd = db.session.query(
+            db.func.sum(PricingPlan.price_vnd)
+        ).scalar() or 0
+
+        most_expensive_plan = PricingPlan.query.order_by(PricingPlan.price_vnd.desc()).first()
+
+        return jsonify({
+            "total_plans": total_plans,
+            "total_credits": total_credits,
+            "total_price_vnd": total_price_vnd,
+            "most_expensive_plan": most_expensive_plan.to_dict() if most_expensive_plan else None
+        }), 200
+    except SQLAlchemyError as e:
+        return jsonify({
+            "message": "Lỗi khi thống kê các gói!",
+            "error": str(e)
+        }), 500
