@@ -262,4 +262,23 @@ def admin_confirm_payment(order_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({"message": "Lỗi admin duyệt thanh toán", "error": str(e)}), 500
+@order_bp.route('/stats', methods=['GET'])
+@token_required
+@admin_required
+def order_stats():
+    try:
+        total_orders = Order.query.count()
+        total_revenue = db.session.query(db.func.sum(Order.total)).scalar() or 0
+        pending_orders = Order.query.filter_by(status='pending').count()
+        paid_orders = Order.query.filter_by(status='paid').count()
+
+        return jsonify({
+            "total_orders": total_orders,
+            "total_revenue": total_revenue,
+            "pending_orders": pending_orders,
+            "paid_orders": paid_orders
+        }), 200
+    except Exception as e:
+        print("❌ [ERROR] Lỗi khi lấy thống kê đơn hàng:", str(e))
+        return jsonify({"message": "Lỗi khi lấy thống kê đơn hàng!", "error": str(e)}), 500
 
